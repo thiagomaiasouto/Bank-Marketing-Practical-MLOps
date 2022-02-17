@@ -37,7 +37,7 @@ def process_args(args):
     logger.info("Splitting data into train and test")
     splits = {}
 
-    splits["x_train"], splits["x_test"], splits["y_train"], splits["y_test"] = train_test_split(
+    splits["train"], splits["test"] = train_test_split(
         df.drop(labels=args.stratify,axis=1),
         df[args.stratify],
         test_size=args.test_size,
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--artifact_root",
         type=str,
-        help="Root for the names of the produced artifacts. The script will produce 4 artifacts: "
+        help="Root for the names of the produced artifacts. The script will produce 2 artifacts: "
              "{root}_train.csv and {root}_test.csv",
         required=True,
     )
