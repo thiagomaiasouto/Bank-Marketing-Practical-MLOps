@@ -1,0 +1,11 @@
+name: check_data
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pandas
+  - pip
+  - scipy
+  - pip:
+      - wandb
+      - pytest
