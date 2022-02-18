@@ -13,7 +13,7 @@ main:
   # pseudo-random operations
   random_seed: 42
 data:
-  file_url: ""
+  file_url: "https://docs.google.com/uc?export=download&id=1AtKo0u4r251RvZYkUAFtGoA3UAw3AbhH"
   reference_dataset: "raw_data.csv:latest"
   # Threshold for Kolomorov-Smirnov test
   ks_alpha: 0.05
