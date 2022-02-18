@@ -4,3 +4,5 @@
 **/outputs
 **/wandb
 **/artifacts
+**/__pycache__
+**/.pytest_cache
