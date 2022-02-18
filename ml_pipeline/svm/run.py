@@ -246,7 +246,7 @@ def process_args(args):
     # Aplicando o undersampling ao conjunto de treinamento
     X_train_sub, y_train_sub = rus.fit_resample(X_train, y_train)
     # Aplicando o undersampling ao conjunto de teste
-    X_test_sub, y_test_sub = rus.fit_resample(X_val, y_val)
+    X_val_sub, y_val_sub = rus.fit_resample(X_val, y_val)
 
     with open(args.model_config) as fp:
         model_config = json.load(fp)
@@ -262,22 +262,22 @@ def process_args(args):
 
     # predict
     logger.info("Infering")
-    y2_pred = modelo2.predict(X_test_sub)
+    y2_pred = modelo2.predict(X_val_sub)
 
     # Evaluation Metrics
     logger.info("Evaluation metrics")
     # Metric: AUC
-    auc = roc_auc_score(y_test_sub, y2_pred, average="macro")
+    auc = roc_auc_score(y_val_sub, y2_pred, average="macro")
     run.summary["AUC"] = auc
 
     # Metric: Accuracy
-    acc = accuracy_score(y_test_sub, y2_pred)
+    acc = accuracy_score(y_val_sub, y2_pred)
     run.summary["Accuracy"] = acc
 
     # Metric: Confusion Matrix
     fig_confusion_matrix, ax = plt.subplots(1, 1, figsize=(7, 4))
     ConfusionMatrixDisplay(confusion_matrix(y2_pred,
-                                            y_test_sub,
+                                            y_val_sub,
                                             labels=[1, 0]),
                            display_labels=["yes", "no"]
                            ).plot(values_format=".0f", ax=ax)
