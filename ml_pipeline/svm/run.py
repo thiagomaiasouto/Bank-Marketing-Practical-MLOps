@@ -65,7 +65,7 @@ class Seletor_colunas(BaseEstimator, TransformerMixin):
 
 
 # Handling categorical features
-class Transforma_categorica(BaseEstimator, TransformerMixin):
+class Transformacao_categorica(BaseEstimator, TransformerMixin):
     # Construtor
     def __init__(self, new_features=True):
         self.new_features = new_features
@@ -204,7 +204,7 @@ def process_args(args):
 
     # Definição do Pipeline das variáveis categóricas, e cada etapa a ser realizada
     categorical_pipeline = Pipeline(steps=[('cat_selector', Seletor_colunas(categorical_features)),
-                                           ('cat_transformer', Transforma_categorica()),
+                                           ('cat_transformer', Transformacao_categorica()),
                                            ('cat_encoder', OneHotEncoder(sparse=False))
                                            ]
                                     )
