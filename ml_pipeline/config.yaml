@@ -3,8 +3,8 @@ main:
   experiment_name: dev
   execute_steps:
     - download
-    - check_data
     - preprocess
+    - check_data
     - segregate
     - svm
     - evaluate
@@ -22,12 +22,10 @@ data:
   # Stratify according to the target when splitting the data
   # in train/test or in train/val
   stratify: "y"
-#Change to SVM
-#decision_tree_pipeline:
-  #decision_tree:
-    #criterion: "entropy"
-    #splitter: "best"
-    #max_depth: 13
-  #numerical_pipe:
-    #model: 0
-  #export_artifact: "model_export"
+svm_pipeline:
+  svm:
+    kernel: "linear"
+    gamma: "scale"
+  numerical_pipe:
+    model: 0
+  export_artifact: "model_export"

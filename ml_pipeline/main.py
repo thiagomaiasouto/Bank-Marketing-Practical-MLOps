@@ -1,7 +1,18 @@
 import mlflow
 import os
+import sys
+import logging
 import hydra
 from omegaconf import DictConfig, OmegaConf
+
+# configure logging
+logging.basicConfig(level=logging.INFO,
+                    stream=sys.stdout,
+                    format="%(asctime)s %(message)s",
+                    datefmt='%d-%m-%Y %H:%M:%S')
+
+# reference for a logging obj
+logger = logging.getLogger()
 
 # This automatically reads in the configuration
 @hydra.main(config_name='config')
@@ -74,19 +85,21 @@ def process_args(config: DictConfig):
         )
 
     if "svm" in steps_to_execute:
+        logger.info("Executing SVM")
         # Serialize decision tree configuration
-        model_config = os.path.abspath("decision_tree_config.yml")
+        model_config = os.path.abspath("svm_config.yml")
+        logger.info(f"model_config:  {model_config}")
 
         with open(model_config, "w+") as fp:
-            fp.write(OmegaConf.to_yaml(config["decision_tree_pipeline"]))
+            fp.write(OmegaConf.to_yaml(config["svm_pipeline"]))
 
         _ = mlflow.run(
-            os.path.join(root_path, "decision_tree"),
+            os.path.join(root_path, "svm"),
             "main",
             parameters={
-                "train_data": "train_data.csv:latest",
+                "train_data": "data_train.csv:latest",
                 "model_config": model_config,
-                "export_artifact": config["decision_tree_pipeline"]["export_artifact"],
+                "export_artifact": config["svm_pipeline"]["export_artifact"],
                 "random_seed": config["main"]["random_seed"],
                 "val_size": config["data"]["val_size"],
                 "stratify": config["data"]["stratify"]
@@ -99,8 +112,8 @@ def process_args(config: DictConfig):
             os.path.join(root_path, "evaluate"),
             "main",
             parameters={
-                "model_export": f"{config['decision_tree_pipeline']['export_artifact']}:latest",
-                "test_data": "test_data.csv:latest"
+                "model_export": f"{config['svm_pipeline']['export_artifact']}:latest",
+                "test_data": "data_test.csv:latest"
             }
         )
 

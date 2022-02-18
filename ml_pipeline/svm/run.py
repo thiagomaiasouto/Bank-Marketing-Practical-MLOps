@@ -7,10 +7,14 @@ Implement a pipeline component to train a decision tree model.
 import argparse
 import logging
 import json
+import os
+import yaml
+import tempfile
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import wandb
+import imblearn.pipeline as imb_pipe
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -26,7 +30,10 @@ from sklearn.metrics import plot_confusion_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import accuracy_score
 from imblearn.under_sampling import RandomUnderSampler
+from mlxtend.plotting import plot_decision_regions
 from sklearn.svm import SVC
+import mlflow
+from mlflow.models import infer_signature
 
 # option
 # from sklearn.impute import SimpleImputer
@@ -147,19 +154,26 @@ def process_args(args):
     # project name comes from config.yaml >> project_name: Trabalho_ivan
     run = wandb.init(job_type="train")
 
+    # columns used
+    columns = ['age', 'job', 'marital', 'education', 'default', 'balance',
+                'housing', 'loan', 'contact', 'day', 'month', 'duration',
+                'campaign', 'pdays', 'previous', 'poutcome', 'y']
+
     logger.info("Downloading and reading train artifact")
     local_path = run.use_artifact(args.train_data).file()
-    df_train = pd.read_csv(local_path)
+    logger.info("Create a dataframe from the artifact path")
+    df_train = pd.read_csv(local_path, delimiter=',', names = columns)
+    logger.info(f"columns: {df_train.columns}")
 
     # Spliting train.csv into train and validation dataset
     logger.info("Spliting data into train/val")
     # split-out train/validation and test dataset
-    x_train, x_val, y_train, y_val = train_test_split(df_train.drop(labels="y", axis=1),
-                                                      df_train["y"],
-                                                      test_size=0.30,
-                                                      random_state=41,
+    x_train, x_val, y_train, y_val = train_test_split(df_train.drop(labels=args.stratify,axis=1),
+                                                      df_train[args.stratify],
+                                                      test_size=args.val_size,
+                                                      random_state=args.random_seed,
                                                       shuffle=True,
-                                                      stratify=df_train["y"])
+                                                      stratify=df_train[args.stratify])
 
     logger.info("x train: {}".format(x_train.shape))
     logger.info("y train: {}".format(y_train.shape))
@@ -220,36 +234,24 @@ def process_args(args):
                                                                  ('num_pipeline', numerical_pipeline)
                                                                  ]
                                                )
-    new_data = full_pipeline_preprocessing.fit_transform(x_train)
-    catnames = full_pipeline_preprocessing.get_params()["cat_pipeline"][2].get_feature_names_out().tolist()
-    numnames = full_pipeline_preprocessing.get_params()["num_pipeline"][1].get_feature_names()
-    X_train = pd.DataFrame(new_data, columns=catnames + numnames)
-    retirar = ["job_unknown", "education_unknown", "default_no", "housing_no", "loan_no"]
-    X_train = X_train.drop(retirar, axis=1)
 
-    new_data = full_pipeline_preprocessing.transform(x_val)
-    catnames = full_pipeline_preprocessing.get_params()["cat_pipeline"][2].get_feature_names_out().tolist()
-    numnames = full_pipeline_preprocessing.get_params()["num_pipeline"][1].get_feature_names()
-    X_val = pd.DataFrame(new_data, columns=catnames + numnames)
+    # Instatiating the random under sampling class
+    rus =  RandomUnderSampler(sampling_strategy='auto',  
+                              random_state=0,  
+                              replacement=True 
+                             )  
 
-    retirar = ["job_unknown", "education_unknown", "default_no", "housing_no", "loan_no"]
-    X_val = X_val.drop(retirar, axis=1)
-    # Modeling and Training
-    # Get the configuration for the model
+    # The full pipeline
+    pipe = imb_pipe.Pipeline(steps = [('full_pipeline', full_pipeline_preprocessing),
+                                      ('rus', rus ),
+                                      ("classifier", SVC(kernel = 'linear', gamma = 'scale'))
+                                    ]
+                            )
 
-    rus = RandomUnderSampler(
-        sampling_strategy='auto',  # samples only the majority class
-        random_state=0,  # for reproducibility
-        replacement=True  # if it should resample with replacement
-    )
+    logger.info(f"args.model_config:  {args.model_config}")
 
-    # Aplicando o undersampling ao conjunto de treinamento
-    X_train_sub, y_train_sub = rus.fit_resample(X_train, y_train)
-    # Aplicando o undersampling ao conjunto de teste
-    X_val_sub, y_val_sub = rus.fit_resample(X_val, y_val)
-
-    with open(args.model_config) as fp:
-        model_config = json.load(fp)
+    with open(args.model_config,'rb') as fp:
+        model_config = yaml.safe_load(fp)
 
     # Add it to the W&B configuration so the values for the hyperparams
     # are tracked
@@ -257,27 +259,26 @@ def process_args(args):
 
     # training
     logger.info("Training")
-    modelo2 = SVC(**model_config)
-    modelo2.fit(X_train_sub, y_train_sub)
+    pipe.fit(x_train, y_train)
 
     # predict
     logger.info("Infering")
-    y2_pred = modelo2.predict(X_val_sub)
+    predict = pipe.predict(x_val)
 
     # Evaluation Metrics
     logger.info("Evaluation metrics")
     # Metric: AUC
-    auc = roc_auc_score(y_val_sub, y2_pred, average="macro")
+    auc = roc_auc_score(y_val, predict, average="macro")
     run.summary["AUC"] = auc
 
     # Metric: Accuracy
-    acc = accuracy_score(y_val_sub, y2_pred)
+    acc = accuracy_score(y_val, predict)
     run.summary["Accuracy"] = acc
 
     # Metric: Confusion Matrix
     fig_confusion_matrix, ax = plt.subplots(1, 1, figsize=(7, 4))
-    ConfusionMatrixDisplay(confusion_matrix(y2_pred,
-                                            y_val_sub,
+    ConfusionMatrixDisplay(confusion_matrix(predict,
+                                            y_val,
                                             labels=[1, 0]),
                            display_labels=["yes", "no"]
                            ).plot(values_format=".0f", ax=ax)
@@ -285,6 +286,53 @@ def process_args(args):
     ax.set_ylabel("Predicted Label")
 
 
+    # Uploading figures
+    logger.info("Uploading figures")
+    run.log(
+        {
+            "confusion_matrix": wandb.Image(fig_confusion_matrix)
+        }
+    )
+
+    # Export if required
+    if args.export_artifact != "null":
+        export_model(run, pipe, x_val, predict, args.export_artifact)
+
+
+
+def export_model(run, pipe, x_val, val_pred, export_artifact):
+
+    # Infer the signature of the model
+    signature = infer_signature(x_val, val_pred)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+
+        export_path = os.path.join(temp_dir, "model_export")
+
+        mlflow.sklearn.save_model(
+            pipe, # our pipeline
+            export_path, # Path to a directory for the produced package
+            serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE,
+            signature=signature, # input and output schema
+            input_example=x_val.iloc[:2], # the first few examples
+        )
+
+        artifact = wandb.Artifact(
+            export_artifact,
+            type="model_export",
+            description="SVM pipeline export",
+        )
+        
+        # NOTE that we use .add_dir and not .add_file
+        # because the export directory contains several
+        # files
+        artifact.add_dir(export_path)
+
+        run.log_artifact(artifact)
+
+        # Make sure the artifact is uploaded before the temp dir
+        # gets deleted
+        artifact.wait()        
 
 
 if __name__ == "__main__":
@@ -305,6 +353,38 @@ if __name__ == "__main__":
         type=str,
         help="Path to a JSON file containing the configuration for the Decision Tree",
         required=True,
+    )
+
+    parser.add_argument(
+        "--export_artifact",
+        type=str,
+        help="Name of the artifact for the exported model. Use 'null' for no export.",
+        required=False,
+        default="null",
+    )
+
+    parser.add_argument(
+        "--random_seed",
+        type=int,
+        help="Seed for the random number generator.",
+        required=False,
+        default=42
+    )
+
+    parser.add_argument(
+        "--val_size",
+        type=float,
+        help="Size for the validation set as a fraction of the training set",
+        required=False,
+        default=0.3
+    )
+
+    parser.add_argument(
+        "--stratify",
+        type=str,
+        help="Name of a column to be used for stratified sampling. Default: 'null', i.e., no stratification",
+        required=False,
+        default="null",
     )
 
     ARGS = parser.parse_args()
