@@ -11,4 +11,6 @@ dependencies:
   - mlflow=1.14.1
   - pip:
       - wandb==0.12.10
+      - imbalanced-learn==0.9.0
       - mlflow==1.14.1
+      

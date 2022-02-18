@@ -8,6 +8,7 @@ import argparse
 import logging
 import pandas as pd
 import wandb
+import sys
 import mlflow.sklearn
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
@@ -15,10 +16,13 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import accuracy_score
+import imblearn.pipeline as imb_pipe
+from imblearn.under_sampling import RandomUnderSampler
 
 
 # configure logging
 logging.basicConfig(level=logging.INFO,
+                    stream = sys.stdout,
                     format="%(asctime)s %(message)s",
                     datefmt='%d-%m-%Y %H:%M:%S')
 
@@ -28,15 +32,28 @@ logger = logging.getLogger()
 def process_args(args):
     
     run = wandb.init(job_type="test")
+    
+    columns = ['age', 'job', 'marital', 'education', 'default', 'balance',
+                'housing', 'loan', 'contact', 'day', 'month', 'duration',
+                'campaign', 'pdays', 'previous', 'poutcome', 'y']
 
     logger.info("Downloading and reading test artifact")
     test_data_path = run.use_artifact(args.test_data).file()
-    df_test = pd.read_csv(test_data_path)
+    df_test = pd.read_csv(test_data_path, delimiter=',', names = columns)
 
     # Extract the target from the features
     logger.info("Extracting target from dataframe")
     x_test = df_test.copy()
     y_test = x_test.pop("y")
+
+    # Encoding the target variable
+    logger.info("Encoding Target Variable")
+    # define a categorical encoding for target variable
+    le = LabelEncoder()
+
+    # fit and transoform y_train
+    y_test = le.fit_transform(y_test)
+    logger.info("Classes [0, 1]: {}".format(le.inverse_transform([0, 1])))
 
     ## Download inference artifact
     logger.info("Downloading and reading the exported model")
