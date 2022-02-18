@@ -48,7 +48,7 @@ def process_args(args):
     logger.info("Create a dataframe from the artifact path")
     # create a dataframe from the artifact path
     df = pd.read_csv(artifact_path,
-                    header=None,
+                    delimiter=';',
                     names=columns)
     
     # Delete duplicated rows
@@ -57,7 +57,8 @@ def process_args(args):
     
     # Generate a "clean data file"
     filename = "preprocessed_data.csv"
-    df.to_csv(filename,index=False, header=False)
+    df.to_csv(filename,index=False, header=True)
+    logger.info("Header are true")
     
     # Create a new artifact and configure with the necessary arguments
     artifact = wandb.Artifact(

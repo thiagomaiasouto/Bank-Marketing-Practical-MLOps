@@ -6,12 +6,14 @@ Download the raw data
 import argparse
 import logging
 import pathlib
+import sys
 import wandb
 import requests
 import tempfile
 
 # configure logging
 logging.basicConfig(level=logging.INFO,
+                    stream= sys.stdout,
                     format="%(asctime)s %(message)s",
                     datefmt='%d-%m-%Y %H:%M:%S')
 
