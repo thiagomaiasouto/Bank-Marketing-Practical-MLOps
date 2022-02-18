@@ -1,4 +1,5 @@
 # Mlflow
-mlruns/
-mlartifacts/
-outputs/
+**/mlruns
+**/mlartifacts
+**/outputs
+**/wandb
