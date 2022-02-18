@@ -57,7 +57,7 @@ def process_args(args):
     
     # Generate a "clean data file"
     filename = "preprocessed_data.csv"
-    df.to_csv(filename,index=False)
+    df.to_csv(filename,index=False, header=False)
     
     # Create a new artifact and configure with the necessary arguments
     artifact = wandb.Artifact(
