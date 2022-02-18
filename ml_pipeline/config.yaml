@@ -1,5 +1,5 @@
 main:
-  project_name: bank_change_name
+  project_name: bank_marketing_project
   experiment_name: dev
   execute_steps:
     - download

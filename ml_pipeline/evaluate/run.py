@@ -13,9 +13,11 @@ import mlflow.sklearn
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import roc_auc_score
+from sklearn.metrics import recall_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import ConfusionMatrixDisplay
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import balanced_accuracy_score
 import imblearn.pipeline as imb_pipe
 from imblearn.under_sampling import RandomUnderSampler
 
@@ -67,13 +69,22 @@ def process_args(args):
 
     # Evaluation Metrics
     logger.info("Evaluation metrics")
+
     # Metric: AUC
     auc = roc_auc_score(y_test, predict, average="macro")
     run.summary["AUC"] = auc
-    
+
     # Metric: Accuracy
     acc = accuracy_score(y_test, predict)
     run.summary["Accuracy"] = acc
+    
+    # Metric: Balanced Accuracy
+    blc_acc = balanced_accuracy_score(y_test, predict)
+    run.summary["Balanced_Accuracy"] = blc_acc
+
+    # Metric: Recall
+    rcll = recall_score(y_test, predict)
+    run.summary["Recall"] = rcll
 
     
     # Metric: Confusion Matrix
