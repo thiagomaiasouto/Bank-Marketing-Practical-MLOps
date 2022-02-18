@@ -34,6 +34,9 @@ from mlxtend.plotting import plot_decision_regions
 from sklearn.svm import SVC
 import mlflow
 from mlflow.models import infer_signature
+from sklearn.metrics import balanced_accuracy_score
+from sklearn.metrics import recall_score
+
 
 # option
 # from sklearn.impute import SimpleImputer
@@ -274,6 +277,15 @@ def process_args(args):
     # Metric: Accuracy
     acc = accuracy_score(y_val, predict)
     run.summary["Accuracy"] = acc
+
+
+    # Metric: Balanced Accuracy
+    blc_acc = balanced_accuracy_score(y_val, predict)
+    run.summary["Balanced_Accuracy"] = blc_acc
+
+    # Metric: Recall
+    rcll = recall_score(y_val, predict)
+    run.summary["Recall"] = rcll
 
     # Metric: Confusion Matrix
     fig_confusion_matrix, ax = plt.subplots(1, 1, figsize=(7, 4))
